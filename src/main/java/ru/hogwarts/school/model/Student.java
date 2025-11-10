@@ -10,18 +10,18 @@ import java.util.Objects;
 public class Student {
     @Id
     @GeneratedValue
-    @Schema(hidden = true)
+    //@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 
-    private Long id;
+    private long id;
     private String name;
     private int age;
 
 
-    public Long getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(long id) {
         this.id = id;
     }
 

@@ -11,16 +11,17 @@ import java.util.Objects;
 public class Faculty {
     @Id
     @GeneratedValue
-    private Long id;
+    //@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private long id;
     private String name;
     private String color;
 
 
-    public Long getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(long id) {
         this.id = id;
     }
 
