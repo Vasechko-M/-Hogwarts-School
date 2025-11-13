@@ -41,5 +41,12 @@ public class StudentService {
             }
             return studentRepository.findByAge(age);
         }
+    public Collection<Student> getStudentsByAgeBetween(int min, int max) {
+        if (min > max || min < 0 || max < 0) {
+            return Collections.emptyList(); //
+        }
+        return studentRepository.findByAgeBetween(min, max);
+    }
+
 
 }

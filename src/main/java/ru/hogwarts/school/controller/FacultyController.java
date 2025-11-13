@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.hogwarts.school.model.Faculty;
+import ru.hogwarts.school.model.Student;
 import ru.hogwarts.school.service.FacultyService;
 
 import java.util.Collection;
@@ -54,8 +55,21 @@ public class FacultyController {
         return ResponseEntity.ok().build();
         }
 
-    @GetMapping("color/{color}")
-    public Collection<Faculty> getFacultiesByColor(@PathVariable String color) {
-        return facultyService.getFacultiesByColor(color);
+
+    @GetMapping("search")
+    public ResponseEntity<Collection<Faculty>> searchFaculties(@RequestParam String query) {
+        Collection<Faculty> faculties = facultyService.searchFacultiesByNameOrColor(query);
+        return ResponseEntity.ok(faculties);
+    }
+
+    @GetMapping("{id}/students")
+    public ResponseEntity<Collection<Student>> getStudentsByFaculty(@PathVariable Long id) {
+        Faculty faculty = facultyService.findFaculty(id);
+        if (faculty == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Collection<Student> students = faculty.getStudents();
+        return ResponseEntity.ok(students);
     }
 }

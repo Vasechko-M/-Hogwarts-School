@@ -1,21 +1,29 @@
 package ru.hogwarts.school.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 
 import java.util.Objects;
 @Entity
 public class Student {
     @Id
     @GeneratedValue
-    //@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 
     private long id;
     private String name;
     private int age;
 
+    @ManyToOne
+    @JoinColumn(name = "faculty_id")
+    private Faculty faculty;
+
+    public Faculty getFaculty() {
+        return faculty;
+    }
+
+    public void setFaculty(Faculty faculty) {
+        this.faculty = faculty;
+    }
 
     public long getId() {
         return id;
