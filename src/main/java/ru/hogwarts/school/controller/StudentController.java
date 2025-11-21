@@ -1,5 +1,7 @@
 package ru.hogwarts.school.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,6 +11,7 @@ import ru.hogwarts.school.service.StudentService;
 
 import java.util.Collection;
 
+@Tag(name = "Студенты")
 @RestController
 @RequestMapping("students")
 public class StudentController {
@@ -18,16 +21,19 @@ public class StudentController {
         this.studentService = studentService;
     }
 
+    @Operation(summary = "Показать студентов")
     @GetMapping
     public ResponseEntity<Collection<Student>> getAllStudents() {
         return ResponseEntity.ok(studentService.getAllStudents());
     }
 
+    @Operation(summary = "Добавить студента")
     @PostMapping
     public Student createStudent(@RequestBody Student student) {
         return studentService.createStudent(student);
     }
 
+    @Operation(summary = "Найти студента по id")
     @GetMapping("{id}")
     public ResponseEntity<Student> getStudentInfo(@PathVariable Long id) {
         Student student = studentService.findStudent(id);
@@ -37,6 +43,7 @@ public class StudentController {
         return ResponseEntity.ok(student);
     }
 
+    @Operation(summary = "Редактировать студента")
     @PutMapping
     public ResponseEntity<Student> editStudent(@RequestBody Student student) {
         Student foundStudent = studentService.editStudent(student);
@@ -46,18 +53,21 @@ public class StudentController {
         return ResponseEntity.ok(foundStudent);
     }
 
+    @Operation(summary = "Удалить студента")
     @DeleteMapping("{id}")
     public ResponseEntity deleteStudent(@PathVariable Long id) {
         studentService.deleteStudent(id);
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Найти студентов по возрасту")
     @GetMapping("age/between")
     public ResponseEntity<Collection<Student>> getStudentsByAgeBetween(@RequestParam int min, @RequestParam int max) {
         Collection<Student> students = studentService.getStudentsByAgeBetween(min, max);
         return ResponseEntity.ok(students);
     }
 
+    @Operation(summary = "Посмотреть факультет студента")
     @GetMapping("{id}/faculty")
     public ResponseEntity<Faculty> getFacultyByStudent(@PathVariable Long id) {
         Student student = studentService.findStudent(id);
@@ -70,6 +80,5 @@ public class StudentController {
         }
         return ResponseEntity.ok(faculty);
     }
-
 }
 
