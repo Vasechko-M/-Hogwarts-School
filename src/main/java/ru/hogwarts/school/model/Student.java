@@ -17,6 +17,17 @@ public class Student {
     @JoinColumn(name = "faculty_id")
     private Faculty faculty;
 
+    public Avatar getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(Avatar avatar) {
+        this.avatar = avatar;
+    }
+
+    @OneToOne(mappedBy = "student")
+    private Avatar avatar;
+
     public Faculty getFaculty() {
         return faculty;
     }
