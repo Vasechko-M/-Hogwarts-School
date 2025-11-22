@@ -2,6 +2,7 @@ package ru.hogwarts.school.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,8 @@ import ru.hogwarts.school.service.AvatarService;
 import ru.hogwarts.school.service.StudentService;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 @Tag(name = "Аватары студентов")
@@ -54,21 +57,30 @@ public class AvatarController {
 
     @Operation(summary = "Показать оригинал аватара по id студента")
     @GetMapping("/file/{studentId}")
-    public ResponseEntity<byte[]> getAvatarFromFile(@PathVariable Long studentId) {
-
+    public void getAvatarFromFile(@PathVariable Long studentId, HttpServletResponse response) {
         Avatar avatar = avatarService.findAvatar(studentId);
         if (avatar == null || avatar.getFilePath() == null) {
-            return ResponseEntity.notFound().build();
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+            return;
         }
+        Path path = Path.of(avatar.getFilePath());
         try {
-            Path path = Path.of(avatar.getFilePath());
-            byte[] bytes = Files.readAllBytes(path);
             String mediaType = Files.probeContentType(path);
-            return ResponseEntity.ok()
-                    .header("Content-Type", mediaType != null ? mediaType : "application/octet-stream")
-                    .body(bytes);
+            response.setContentType(mediaType != null ? mediaType : "application/octet-stream");
+            response.setStatus(HttpStatus.OK.value());
+
+            try (InputStream is = Files.newInputStream(path);
+                 OutputStream os = response.getOutputStream()) {
+
+
+                byte[] buffer = new byte[8192]; // Размер буфера
+                int bytesRead;
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+            }
         } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
         }
     }
 }
