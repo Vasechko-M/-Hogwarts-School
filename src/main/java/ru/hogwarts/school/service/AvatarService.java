@@ -29,6 +29,14 @@ public class AvatarService {
         this.studentService = studentService;
         this.avatarRepository = avatarRepository;
     }
+
+    public void processAndUploadAvatar(Long studentId, MultipartFile file) throws IOException {
+        if (file.getSize() >= 2048 * 600) {
+            throw new IllegalArgumentException("Файл очень большой");
+        }
+        Student student = studentService.findStudent(studentId);
+        uploadAvatar(studentId, file);
+    }
     public void uploadAvatar(Long studentId, MultipartFile file) throws IOException {
         Student student = studentService.findStudent(studentId);
 

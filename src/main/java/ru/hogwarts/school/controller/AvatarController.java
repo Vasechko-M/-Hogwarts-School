@@ -33,54 +33,67 @@ public class AvatarController {
     @Operation(summary = "Загрузка аватара")
     @PostMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadAvatar(@PathVariable Long id,
-                                               @RequestParam MultipartFile file) throws IOException{
-        if (file.getSize() >= 2048 * 600) {
-            return ResponseEntity.badRequest().body("File is too big");
+                                               @RequestParam MultipartFile file) {
+        try {
+            avatarService.processAndUploadAvatar(id, file);
+            return ResponseEntity.ok("Аватар успешно загружен");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Ошибка сохранения файла");
         }
-        avatarService.uploadAvatar(id, file);
-        return ResponseEntity.ok().build();
     }
 
 
-    @Operation(summary = "Показать аватар по id студента")
+    @Operation(summary = "Показать аватар по id студента из базы данных")
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<byte[]> getAvatarFromDb(@PathVariable Long studentId) {
+    public ResponseEntity<?> getAvatarFromDb(@PathVariable Long studentId) {
         Avatar avatar = avatarService.findAvatar(studentId);
         if (avatar == null || avatar.getData() == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Такого аватара или студента нет");
         }
+
+        String mediaType = avatar.getMediaType();
+        if (mediaType == null || mediaType.isEmpty()) {
+            mediaType = "application/octet-stream";
+        }
+
         return ResponseEntity.ok()
-                .header("Content-Type", avatar.getMediaType())
+                .header("Content-Type", mediaType)
                 .body(avatar.getData());
     }
 
 
     @Operation(summary = "Показать оригинал аватара по id студента")
     @GetMapping("/file/{studentId}")
-    public void getAvatarFromFile(@PathVariable Long studentId, HttpServletResponse response) {
+    public ResponseEntity<?> getAvatarFromFile(@PathVariable Long studentId, HttpServletResponse response) {
         Avatar avatar = avatarService.findAvatar(studentId);
         if (avatar == null || avatar.getFilePath() == null) {
-            response.setStatus(HttpStatus.NOT_FOUND.value());
-            return;
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Такого аватара или студента нет");
         }
-        Path path = Path.of(avatar.getFilePath());
         try {
+            Path path = Path.of(avatar.getFilePath());
+
             String mediaType = Files.probeContentType(path);
             response.setContentType(mediaType != null ? mediaType : "application/octet-stream");
-            response.setStatus(HttpStatus.OK.value());
+
+            long fileSize = Files.size(path);
+            if (fileSize > Integer.MAX_VALUE) {
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                        .body("Файл слишком большой");
+            }
+            response.setContentLength((int) fileSize);
 
             try (InputStream is = Files.newInputStream(path);
                  OutputStream os = response.getOutputStream()) {
-
-
-                byte[] buffer = new byte[8192]; // Размер буфера
-                int bytesRead;
-                while ((bytesRead = is.read(buffer)) != -1) {
-                    os.write(buffer, 0, bytesRead);
-                }
+                is.transferTo(os);
             }
+            return ResponseEntity.ok().build();
         } catch (IOException e) {
-            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
         }
     }
 }
