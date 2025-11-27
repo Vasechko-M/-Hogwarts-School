@@ -116,8 +116,7 @@ class FacultyControllerTest {
 
         Student student = new Student();
         student.setName("Тестовый студент для получение студентов по id факультета");
-        student.setFaculty(createdFaculty);  // Устанавливаем связь через объект Faculty (JPA обработает)
-        restTemplate.postForObject("http://localhost:" + port + "/students", student, Student.class);  // Используем полный URL для /students (предполагаем StudentController)
+        restTemplate.postForObject("http://localhost:" + port + "/students", student, Student.class);
 
         ResponseEntity<List<Student>> response = restTemplate.exchange(
                 getBaseUrl() + "/" + id + "/students",
