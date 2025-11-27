@@ -1,5 +1,6 @@
 package ru.hogwarts.school.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 
@@ -25,6 +26,7 @@ public class Student {
         this.avatar = avatar;
     }
 
+    @JsonManagedReference
     @OneToOne(mappedBy = "student")
     private Avatar avatar;
 
