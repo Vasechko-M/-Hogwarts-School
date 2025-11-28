@@ -1,5 +1,6 @@
 package ru.hogwarts.school.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 
@@ -19,6 +20,7 @@ public class Avatar {
     @Lob
     private byte[] data;
 
+    @JsonBackReference
     @OneToOne
     @JoinColumn(name = "student_id")
     private Student student;
