@@ -1,126 +1,173 @@
 package ru.hogwarts.school.controller;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.hogwarts.school.model.Faculty;
 import ru.hogwarts.school.model.Student;
+import ru.hogwarts.school.service.StudentService;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Arrays;
+import java.util.Collections;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(controllers = StudentController.class)
 class StudentControllerTest {
+    @Autowired
+    private MockMvc mockMvc;
 
-    @LocalServerPort
-    private int port;
+    @MockBean
+    private StudentService studentService;
 
     @Autowired
-    private StudentController studentController;
-
-    @Autowired
-    private TestRestTemplate restTemplate;
-
-    private String getBaseUrl() {
-        return "http://localhost:" + port + "/students";
-    }
+    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("Получение всех студентов")
-    void testGetAllStudents() {
-        ResponseEntity<Student[]> response = restTemplate.getForEntity(getBaseUrl(), Student[].class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
+    void testGetAllStudents() throws Exception {
+        Student student1 = new Student();
+        student1.setId(1);
+        student1.setName("Студент 1");
+        Student student2 = new Student();
+        student2.setId(2);
+        student2.setName("Студент 2");
+        when(studentService.getAllStudents()).thenReturn(Arrays.asList(student1, student2));
+
+        mockMvc.perform(get("/students"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Студент 1"))
+                .andExpect(jsonPath("$[1].name").value("Студент 2"));
     }
 
     @Test
-    @DisplayName("Создание студентов")
-    void testCreateStudent() {
+    @DisplayName("Тест добавление студентов")
+    void testCreateStudent() throws Exception {
         Student newStudent = new Student();
-        newStudent.setName("Тестовы студент для теста создания студентов");
-        newStudent.setAge(20);
-        ResponseEntity<Student> response = restTemplate.postForEntity(getBaseUrl(), newStudent, Student.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        Student created = response.getBody();
-        assertNotNull(created);
-        assertEquals("Тестовы студент для теста создания студентов", created.getName());
-        assertEquals(20, created.getAge());
+        newStudent.setName("Тестовый студент");
+        when(studentService.createStudent(any(Student.class))).thenReturn(newStudent);
+
+        mockMvc.perform(post("/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newStudent)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый студент"));
     }
 
     @Test
-    @DisplayName("Получение студентов по id")
-    void testGetStudentInfo() {
+    @DisplayName("Получение студента по id если он есть")
+    void testGetStudentInfo_Found() throws Exception {
         Student student = new Student();
-        student.setName("Тестовый студент для получения по id");
-        student.setAge(22);
-        Student created = restTemplate.postForObject(getBaseUrl(), student, Student.class);
-        Long id = created.getId();
+        student.setId(10);
+        student.setName("Тестовый студент");
+        when(studentService.findStudent(10)).thenReturn(student);
 
-        ResponseEntity<Student> response = restTemplate.getForEntity(getBaseUrl() + "/" + id, Student.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Тестовый студент для получения по id", response.getBody().getName());
+        mockMvc.perform(get("/students/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый студент"));
     }
 
     @Test
-    @DisplayName("Редактирование студентов по id")
-    void testEditStudent() {
+    @DisplayName("Получение студента по id если его нет")
+    void testGetStudentInfo_NotFound() throws Exception {
+        when(studentService.findStudent(99)).thenReturn(null);
+
+        mockMvc.perform(get("/students/99"))
+                .andExpect(status().isNotFound());
+    }
+
+
+    @Test
+    @DisplayName("Редактирование студента, если он есть")
+    void testEditStudent_Success() throws Exception {
         Student student = new Student();
-        student.setName("Тестовый студент для редактирования по id");
-        student.setAge(25);
-        Student created = restTemplate.postForObject(getBaseUrl(), student, Student.class);
+        student.setId(1);
+        student.setName("Тестовый студент");
+        when(studentService.editStudent(any(Student.class))).thenReturn(student);
 
-        created.setName("Тестовый студент для редактирования по id изменен");
-        created.setAge(26);
-        HttpEntity<Student> requestUpdate = new HttpEntity<>(created);
-        ResponseEntity<Student> response = restTemplate.exchange(getBaseUrl(), HttpMethod.PUT, requestUpdate, Student.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Тестовый студент для редактирования по id изменен", response.getBody().getName());
-        assertEquals(26, response.getBody().getAge());
+        mockMvc.perform(put("/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(student)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый студент"));
     }
 
     @Test
-    @DisplayName("Удаление студента")
-    void testDeleteStudent() {
+    @DisplayName("Редактирование студента, если его нет")
+    void testEditStudent_NotFound() throws Exception {
         Student student = new Student();
-        student.setName("Двойник Гарри Поттера");
-        student.setAge(15);
-        Long id = restTemplate.postForObject(getBaseUrl(), student, Student.class).getId();
+        student.setId(99);
+        student.setName("Несуществующий студент");
+        when(studentService.editStudent(any(Student.class))).thenReturn(null);
 
-        restTemplate.delete(getBaseUrl() + "/" + id);
-
-        ResponseEntity<String> response = restTemplate.getForEntity(getBaseUrl() + "/" + id, String.class);
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        mockMvc.perform(put("/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(student)))
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("Поиск студента по возрасту")
-    void testGetStudentsByAgeBetween() {
+    @DisplayName("Тест удаления студента")
+    void testDeleteStudent() throws Exception {
+        doNothing().when(studentService).deleteStudent(1);
 
-        ResponseEntity<Student[]> response = restTemplate.getForEntity(getBaseUrl() + "/age/between?min=18&max=25", Student[].class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
+        mockMvc.perform(delete("/students/1"))
+                .andExpect(status().isOk());
+
+        verify(studentService, times(1)).deleteStudent(1);
     }
 
-
     @Test
-    @DisplayName("Получения факультета студента. Нет факультета - пустое тело")
-    void testGetFacultyByStudent() {
+    @DisplayName("Поиск студентов по возрасту")
+    void testGetStudentsByAgeBetween() throws Exception {
         Student student = new Student();
-        student.setName("Student With Faculty");
-        student.setAge(21);
-        Student created = restTemplate.postForObject(getBaseUrl(), student, Student.class);
-        Long id = created.getId();
+        student.setId(1);
+        student.setName("Тестовый студент");
+        when(studentService.getStudentsByAgeBetween(18, 25))
+                .thenReturn(Collections.singletonList(student));
 
-        ResponseEntity<Faculty> response = restTemplate.getForEntity(getBaseUrl() + "/" + id + "/faculty", Faculty.class);
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertNull(response.getBody());
+        mockMvc.perform(get("/students/age/between")
+                        .param("min", "18")
+                        .param("max", "25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Тестовый студент"));
+    }
 
+    @Test
+    @DisplayName("Просмотр факультета студента")
+    void testGetFacultyByStudent_Found() throws Exception {
+        Faculty faculty = new Faculty();
+        //faculty.setId(1);
+        faculty.setName("Тестовый факультет");
+        Student student = new Student();
+        //student.setId(10);
+        student.setName("Тестовый студент");
+        student.setFaculty(faculty);
+        when(studentService.findStudent(10)).thenReturn(student);
+
+        mockMvc.perform(get("/students/10/faculty"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый факультет"));
+    }
+
+    @Test
+    @DisplayName("Просмотр факультета студента, если факультет не найден")
+    void testGetFacultyByStudent_NotFound() throws Exception {
+        Student student = new Student();
+        //student.setId(2); по правилам хорошего тона пишут, что нужно писать id, но работает и без него (в других местах то же самое)
+        student.setName("Тестовый студент");
+        student.setFaculty(null);
+        when(studentService.findStudent(2)).thenReturn(student);
+
+        mockMvc.perform(get("/students/2/faculty"))
+                .andExpect(status().isNotFound());
     }
 }

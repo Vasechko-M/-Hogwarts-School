@@ -1,135 +1,175 @@
 package ru.hogwarts.school.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.hogwarts.school.model.Faculty;
 import ru.hogwarts.school.model.Student;
+import ru.hogwarts.school.service.FacultyService;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Collections;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+
+@WebMvcTest(FacultyController.class)
 class FacultyControllerTest {
-    @LocalServerPort
-    private int port;
+
     @Autowired
-    private FacultyController facultyController;
+    private MockMvc mockMvc;
+
+    @MockBean
+    private FacultyService facultyService;
+
     @Autowired
-    private TestRestTemplate restTemplate;
-    private String getBaseUrl() {
-        return "http://localhost:" + port + "/faculties";
-    }
+    private ObjectMapper objectMapper;
+
     @Test
     @DisplayName("Получение всех факультетов")
-    void testGetAllFaculties() {
-        ResponseEntity<Faculty[]> response = restTemplate.getForEntity(getBaseUrl(), Faculty[].class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
+    void testGetAllFaculties() throws Exception {
+        Faculty faculty1 = new Faculty();
+        faculty1.setId(1);
+        faculty1.setName("Тестовый факультет");
+        Faculty faculty2 = new Faculty();
+        faculty2.setId(2);
+        faculty2.setName("Еще тестовый факультет");
+        when(facultyService.getAllFaculties()).thenReturn(Arrays.asList(faculty1, faculty2));
+
+        mockMvc.perform(get("/faculties"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Тестовый факультет"))
+                .andExpect(jsonPath("$[1].name").value("Еще тестовый факультет"));
     }
+
     @Test
     @DisplayName("Создание факультетов")
-    void testCreateFaculty() {
+    void testCreateFaculty() throws Exception {
         Faculty newFaculty = new Faculty();
         newFaculty.setName("Тестовый факультет");
-        newFaculty.setColor("Малиновый");
+        when(facultyService.createFaculty(any(Faculty.class))).thenReturn(newFaculty);
 
-        ResponseEntity<Faculty> response = restTemplate.postForEntity(getBaseUrl(), newFaculty, Faculty.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        Faculty created = response.getBody();
-        assertNotNull(created);
-        assertEquals("Тестовый факультет", created.getName());
-        assertEquals("Малиновый", created.getColor());
+        mockMvc.perform(post("/faculties")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newFaculty)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый факультет"));
     }
 
     @Test
-    @DisplayName("Получение факультета по id")
-    void testGetFacultyInfo() {
+    @DisplayName("Получение факультета по id, если он есть")
+    void testGetFacultyInfo_Found() throws Exception {
         Faculty faculty = new Faculty();
-        faculty.setName("Тестовый факультет для получения  по id");
-        faculty.setColor("Еще малиновый");
-        Faculty created = restTemplate.postForObject(getBaseUrl(), faculty, Faculty.class);
-        Long id = created.getId();
+        faculty.setId(1);
+        faculty.setName("Тестовый факультет");
+        when(facultyService.findFaculty(1)).thenReturn(faculty);
 
-        ResponseEntity<Faculty> response = restTemplate.getForEntity(getBaseUrl() + "/" + id, Faculty.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Тестовый факультет для получения  по id", response.getBody().getName());
+        mockMvc.perform(get("/faculties/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый факультет"));
     }
+
     @Test
-    @DisplayName("Проверка редактирования факультета")
-    void testEditFaculty() {
-        Faculty faculty = new Faculty();
-        faculty.setName("Факультет не важен");
-        faculty.setColor("Не малиновый");
-        Faculty created = restTemplate.postForObject(getBaseUrl(), faculty, Faculty.class);
+    @DisplayName("Получение факультета по id, если его нет")
+    void testGetFacultyInfo_NotFound() throws Exception {
+        when(facultyService.findFaculty(99)).thenReturn(null);
 
-        created.setName("Теперь важен факультет");
-        created.setColor("Снова малиновы");
-        HttpEntity<Faculty> requestUpdate = new HttpEntity<>(created);
-
-        ResponseEntity<Faculty> response = restTemplate.exchange(getBaseUrl(), HttpMethod.PUT, requestUpdate, Faculty.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Теперь важен факультет", response.getBody().getName());
-        assertEquals("Снова малиновы", response.getBody().getColor());
+        mockMvc.perform(get("/faculties/99"))
+                .andExpect(status().isNotFound());
     }
+
     @Test
-    @DisplayName("Тест на удаление факультета")
-    void testDeleteFaculty() {
+    @DisplayName("Редактирование факультета, если он есть")
+    void testEditFaculty_Success() throws Exception {
         Faculty faculty = new Faculty();
-        faculty.setName("бла-бла-бла");
-        faculty.setColor("та-ра-ра");
-        Faculty created = restTemplate.postForObject(getBaseUrl(), faculty, Faculty.class);
-        Long id = created.getId();
+        faculty.setId(1);
+        faculty.setName("Тестовый факультет для редактирования");
+        when(facultyService.editFaculty(any(Faculty.class))).thenReturn(faculty);
 
-        restTemplate.delete(getBaseUrl() + "/" + id);
-
-        ResponseEntity<Faculty> response = restTemplate.getForEntity(getBaseUrl() + "/" + id, Faculty.class);
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        mockMvc.perform(put("/faculties")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(faculty)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Тестовый факультет для редактирования"));
     }
+
+    @Test
+    @DisplayName("Редактирование факультета, если его нет")
+    void testEditFaculty_NotFound() throws Exception {
+        Faculty faculty = new Faculty();
+        faculty.setId(99);
+        faculty.setName("Тестовый факультет");
+        when(facultyService.editFaculty(any(Faculty.class))).thenReturn(null);
+
+        mockMvc.perform(put("/faculties")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(faculty)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Удаление факультета")
+    void testDeleteFaculty() throws Exception {
+        doNothing().when(facultyService).deleteFaculty(anyLong());
+
+        mockMvc.perform(delete("/faculties/1"))
+                .andExpect(status().isOk());
+
+        verify(facultyService, times(1)).deleteFaculty(1);
+    }
+
     @Test
     @DisplayName("Поиск факультета по имени или цвету")
-    void testSearchFaculties() {
-        String query = "Пурпурный";
-        ResponseEntity<Collection> response = restTemplate.getForEntity(getBaseUrl() + "/search?query=" + query, Collection.class);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
+    void testSearchFaculties() throws Exception {
+        Faculty faculty = new Faculty();
+        faculty.setId(1);
+        faculty.setName("Тестовый факультет");
+        when(facultyService.searchFacultiesByNameOrColor("Тестовый факультет"))
+                .thenReturn(Collections.singletonList(faculty));
+
+        mockMvc.perform(get("/faculties/search")
+                        .param("query", "Тестовый факультет"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Тестовый факультет"));
     }
+
     @Test
     @DisplayName("Получение студентов по id факультета")
-    void testGetStudentsByFaculty() {
+    void testGetStudentsByFaculty() throws Exception {
+        Student student1 = new Student();
+        student1.setId(1);
+        student1.setName("Тестовый студент 1");
+        Student student2 = new Student();
+        student2.setId(2);
+        student2.setName("Тестовый студент 2");
         Faculty faculty = new Faculty();
-        faculty.setName("Тестовый факультет для поиска студентов на нем");
-        faculty.setColor("И здесь малиновый");
-        Faculty createdFaculty = restTemplate.postForObject(getBaseUrl(), faculty, Faculty.class);
-        Long id = createdFaculty.getId();
+        faculty.setId(10);
+        faculty.setName("Тестовый факультет");
+        faculty.setStudents(Arrays.asList(student1, student2));
 
-        Student student = new Student();
-        student.setName("Тестовый студент для получение студентов по id факультета");
-        restTemplate.postForObject("http://localhost:" + port + "/students", student, Student.class);
+        when(facultyService.findFaculty(10)).thenReturn(faculty);
 
-        ResponseEntity<List<Student>> response = restTemplate.exchange(
-                getBaseUrl() + "/" + id + "/students",
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<List<Student>>() {}
-        );
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertFalse(response.getBody().isEmpty());
-        assertEquals(1, response.getBody().size());
-        assertEquals("Тестовый студент для получение студентов по id факультета", response.getBody().get(0).getName());
-        assertEquals(createdFaculty.getId(), response.getBody().get(0).getFaculty().getId());
+        mockMvc.perform(get("/faculties/10/students"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Тестовый студент 1"))
+                .andExpect(jsonPath("$[1].name").value("Тестовый студент 2"));
     }
 
+    @Test
+    @DisplayName("Получение студентов по id факультета, если такого факультета нет")
+    void testGetStudentsByFaculty_NotFound() throws Exception {
+        when(facultyService.findFaculty(99)).thenReturn(null);
+
+        mockMvc.perform(get("/faculties/99/students"))
+                .andExpect(status().isNotFound());
+    }
 }
