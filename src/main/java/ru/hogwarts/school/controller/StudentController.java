@@ -10,6 +10,7 @@ import ru.hogwarts.school.model.Student;
 import ru.hogwarts.school.service.StudentService;
 
 import java.util.Collection;
+import java.util.List;
 
 @Tag(name = "Студенты")
 @RestController
@@ -79,6 +80,26 @@ public class StudentController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(faculty);
+    }
+
+    @Operation(summary = "Количество всех студентов")
+    @GetMapping("/count")
+    public ResponseEntity<Long> getTotalStudents() {
+        long total = studentService.getTotalStudents();
+        return ResponseEntity.ok(total);
+    }
+
+    @Operation(summary = "Средний возраст студентов")
+    @GetMapping("/average-age")
+    public ResponseEntity<Double> getAverageAge() {
+        Double avgAge = studentService.getAverageAge();
+        return ResponseEntity.ok(avgAge);
+    }
+
+    @Operation(summary = "Пять последних студентов")
+    @GetMapping("/last-five")
+    public ResponseEntity<List<Student>> getLastFiveStudents() {
+        return ResponseEntity.ok(studentService.getLastFiveStudents());
     }
 }
 
