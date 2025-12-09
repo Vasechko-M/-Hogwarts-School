@@ -3,6 +3,9 @@ package ru.hogwarts.school.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +20,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+
 @Tag(name = "Аватары студентов")
 @RestController
 @RequestMapping("/avatars")
@@ -95,6 +100,14 @@ public class AvatarController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Внутренняя ошибка сервера");
         }
+    }
+    @Operation(summary = "Получить список аватаров с пагинацией")
+    @GetMapping
+    public ResponseEntity<List<Avatar>> getAvatars(@RequestParam("page") Integer pageNumber,
+                                                   @RequestParam("size") Integer pageSize) {
+
+        List<Avatar> avatarList = avatarService.getAvatars(pageNumber, pageSize);
+        return new ResponseEntity<>(avatarList, HttpStatus.OK);
     }
 }
 
