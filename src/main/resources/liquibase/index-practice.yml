@@ -1,3 +1,5 @@
 databaseChangeLog:
-  - includeAll:
-      path: liquibase/scripts/
+  - include:
+      file: liquibase/scripts/faculties.sql
+  - include:
+      file: liquibase/scripts/students.sql
