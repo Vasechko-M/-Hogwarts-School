@@ -10,6 +10,7 @@ import ru.hogwarts.school.repositories.StudentRepository;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class StudentService {
@@ -131,17 +132,17 @@ public class StudentService {
         }
     }
 
-    public Double getAverageAge() {
-        logger.info("Was invoked method for getAverageAge");
-        try {
-            Double avgAge = studentRepository.getAverageAge();
-            logger.debug("Average age of students: {}", avgAge);
-            return avgAge;
-        } catch (Exception e) {
-            logger.error("Error occurred while calculating average age", e);
-            throw e;
-        }
-    }
+//    public Double getAverageAge() {
+//        logger.info("Was invoked method for getAverageAge");
+//        try {
+//            Double avgAge = studentRepository.getAverageAge();
+//            logger.debug("Average age of students: {}", avgAge);
+//            return avgAge;
+//        } catch (Exception e) {
+//            logger.error("Error occurred while calculating average age", e);
+//            throw e;
+//        }
+//    }
 
     public List<Student> getLastFiveStudents() {
         logger.info("Was invoked method for getLastFiveStudents");
@@ -153,5 +154,28 @@ public class StudentService {
             logger.error("Error occurred while fetching last five students", e);
             throw e;
         }
+    }
+
+    public List<String> getNamesStartingWithA() {
+        List<Student> allStudents = studentRepository.findAll();
+
+        return allStudents.stream()
+                .map(Student::getName)
+                .filter(name -> name != null && name.startsWith("А"))
+                .map(String::toUpperCase)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    public Double getAverageAge() {
+        List<Student> allStudents = studentRepository.findAll();
+
+        return allStudents.stream()
+                .parallel()
+                .filter(student -> student.getAge() != null)
+                .mapToInt(Student::getAge)
+                .average()
+                .orElse(0.0);
     }
 }
