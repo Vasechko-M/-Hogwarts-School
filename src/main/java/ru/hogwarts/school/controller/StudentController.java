@@ -108,6 +108,34 @@ public class StudentController {
         List<String> names = studentService.getNamesStartingWithA();
         return ResponseEntity.ok(names);
     }
+    @Operation(summary = "имена всех студентов в параллельном режиме")
+    @GetMapping("/print-parallel")
+    public ResponseEntity<String> printStudentsInParallel() throws InterruptedException {
+        List<Student> students = (List<Student>) studentService.getAllStudents();
+        try {
+            studentService.getParallelStudentNames(students);
+        } catch (InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Ошибка выполнения");
+        }
+        return ResponseEntity.ok("Вывод смотри в консоли");
+    }
+
+    @Operation(summary = "имена всех студентов в синхронном режиме")
+    @GetMapping("/print-synchronized")
+    public ResponseEntity<String> printNamesSynchronized() {
+        try {
+            String result = studentService.printNamesSynchronized();
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Ошибка выполнения потока");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Произошла непредвиденная ошибка");
+        }
+    }
+
 
 }
 
