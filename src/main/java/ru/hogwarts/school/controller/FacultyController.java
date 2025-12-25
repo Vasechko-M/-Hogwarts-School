@@ -81,4 +81,13 @@ public class FacultyController {
         Collection<Student> students = faculty.getStudents();
         return ResponseEntity.ok(students);
     }
+    @Operation(summary = "Получить самое длинное название факультета")
+    @GetMapping("longest-name")
+    public ResponseEntity<String> getLongestFacultyName() {
+        String longestName = facultyService.getLongestFacultyName();
+        if (longestName == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Факультеты не найдены");
+        }
+        return ResponseEntity.ok(longestName);
+    }
 }

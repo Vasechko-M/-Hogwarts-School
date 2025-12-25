@@ -101,5 +101,13 @@ public class StudentController {
     public ResponseEntity<List<Student>> getLastFiveStudents() {
         return ResponseEntity.ok(studentService.getLastFiveStudents());
     }
+
+    @Operation(summary = "Получить имена всех студентов, начинающихся с 'А', отсортированные в алфавитном порядке, в верхнем регистре")
+    @GetMapping("/names/starts-with-a")
+    public ResponseEntity<List<String>> getNamesStartingWithA() {
+        List<String> names = studentService.getNamesStartingWithA();
+        return ResponseEntity.ok(names);
+    }
+
 }
 

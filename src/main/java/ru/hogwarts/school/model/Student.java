@@ -1,7 +1,6 @@
 package ru.hogwarts.school.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 
 import java.util.Objects;
@@ -12,7 +11,7 @@ public class Student {
 
     private long id;
     private String name;
-    private int age;
+    private Integer age;
 
     @ManyToOne
     @JoinColumn(name = "faculty_id")
@@ -54,7 +53,7 @@ public class Student {
         this.name = name;
     }
 
-    public int getAge() {
+    public Integer getAge() {
         return age;
     }
 
