@@ -178,4 +178,134 @@ public class StudentService {
                 .average()
                 .orElse(0.0);
     }
+
+
+
+    public void getParallelStudentNames(List<Student> students) throws InterruptedException {
+        System.out.println("Параллельный режим");
+        int size = students.size();
+
+        final double[] times = new double[3];
+
+        long overallStart = System.nanoTime();
+
+        for (int i=0; i<Math.min(2, size); i++) {
+            System.out.println("Поток 1: " + students.get(i).getName());
+        }
+
+        Thread t1 = new Thread(() -> {
+            long start = System.nanoTime();
+            int threadNumber = 2;
+            for (int i = 2; i <= 3 && i < size; i++) {
+                System.out.println("Поток " + threadNumber + ": " + students.get(i).getName());
+            }
+            long end = System.nanoTime();
+            times[0] = (end - start) / 1_000_000.0;
+        });
+
+        Thread t2 = new Thread(() -> {
+            long start = System.nanoTime();
+            int threadNumber = 3;
+            for (int i=4; i<=5 && i< size; i++) {
+                System.out.println("Поток " + threadNumber + ": " + students.get(i).getName());
+            }
+            long end = System.nanoTime();
+            times[1] = (end - start) / 1_000_000.0;
+        });
+
+        Thread t3 = new Thread(() -> {
+            long start = System.nanoTime();
+            int threadNumber = 4;
+            for (int i=6; i< size; i++) {
+                System.out.println("Поток " + threadNumber + ": " + students.get(i).getName());
+            }
+            long end = System.nanoTime();
+            times[2] = (end - start) / 1_000_000.0;
+        });
+
+        t1.start();
+        t2.start();
+        t3.start();
+
+        t1.join();
+        t2.join();
+        t3.join();
+
+        long overallEnd = System.nanoTime();
+
+        System.out.printf("Общее время выполнения: %.3f мс%n", (overallEnd - overallStart) / 1_000_000.0);
+        System.out.printf("Время выполнения Поток 2: %.3f мс%n", times[0]);
+        System.out.printf("Время выполнения Поток 3: %.3f мс%n", times[1]);
+        System.out.printf("Время выполнения Поток 4: %.3f мс%n", times[2]);
+    }
+
+    public String printNamesSynchronized() throws InterruptedException {
+        System.out.println("Синхронный режим");
+        Collection<Student> allStudents = getAllStudents();
+
+        List<String> allNames = allStudents.stream()
+                .map(Student::getName)
+                .collect(Collectors.toList());
+
+        System.out.println("Всего студентов: " + allNames.size());
+        System.out.println("Имена: " + allNames);
+
+        if (allNames.size() < 6) {
+            throw new IllegalArgumentException("Недостаточно студентов для выполнения задачи");
+        }
+
+        System.out.println("Основной поток:");
+        System.out.println(allNames.get(0));
+        System.out.println(allNames.get(1));
+
+        final double[] times = new double[3];
+
+        Thread thread1 = new Thread(() -> {
+            long start = System.nanoTime();
+            System.out.println("Параллельный поток 1:");
+            System.out.println(allNames.get(2));
+            System.out.println(allNames.get(3));
+            long end = System.nanoTime();
+            times[0] = (end - start) / 1_000_000.0;
+        });
+
+        Thread thread2 = new Thread(() -> {
+            long start = System.nanoTime();
+            System.out.println("Параллельный поток 2:");
+            System.out.println(allNames.get(4));
+            System.out.println(allNames.get(5));
+            long end = System.nanoTime();
+            times[1] = (end - start) / 1_000_000.0;
+        });
+
+        Thread thread3 = new Thread(() -> {
+            long start = System.nanoTime();
+            System.out.println("Параллельный поток 3:");
+            for (int i = 6; i < allNames.size(); i++) {
+                System.out.println(allNames.get(i));
+            }
+            long end = System.nanoTime();
+            times[2] = (end - start) / 1_000_000.0;
+        });
+
+        long overallStart = System.nanoTime();
+
+        thread1.start();
+        thread2.start();
+        thread3.start();
+
+        thread1.join();
+        thread2.join();
+        thread3.join();
+
+        long overallEnd = System.nanoTime();
+
+        System.out.printf("Общее время выполнения всех потоков: %.3f мс%n", (overallEnd - overallStart) / 1_000_000.0);
+        System.out.printf("Время выполнения Поток 1: %.3f мс%n", times[0]);
+        System.out.printf("Время выполнения Поток 2: %.3f мс%n", times[1]);
+        System.out.printf("Время выполнения Поток 3: %.3f мс%n", times[2]);
+
+        return "Имена студентов выведены в консоль";
+    }
+
 }
